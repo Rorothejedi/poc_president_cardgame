@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+
+<html lang="fr">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta http-equiv="X-UA-Compatible" content="ie=edge">
+        <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+        <link rel="stylesheet" href="styles.css">
+        <title>President JS</title>
+    </head>
+
+    <body>
+        <div id="display" class="d-flex flex-column">
+            <div id="infos" class="d-flex justify-content-around flex-wrap"></div>
+            <div class="d-flex justify-content-around">
+                <div id="lastCardsPlayed" class="d-flex justify-content-around flex-wrap"></div>
+                <div id="dropArea" class="mt-auto"></div>
+            </div>
+            <div class="d-flex justify-content-center">
+                <button id="play" class="btn btn-dark mb-auto mx-auto">Valider</button>
+                <button id="skip" class="btn btn-light mx-auto">Sauter le tour</button>
+            </div>
+            <div id="myCardsArea" class="d-flex justify-content-around flex-wrap"></div>
+        </div>
+        <script src="./ressources/jQuery.js"></script>
+        <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+        <script src="js/beginGame.js"></script>
+        <script src="js/main.js"></script>
+
+        <script>
+            let cardsPlayed = [];
+            let intervalId;
+            let isStop = false;
+
+            // Affichage des cartes du joueur
+            const displayCards = () => {
+                for (let i = 0; i < allDecks[0].length; i++)
+                    $( '#myCardsArea' ).append('<div id="' +  allDecks[0][i][0] + ';' + allDecks[0][i][1] + '" class="cardPlayer ui-widget-content">' + allDecks[0][i][0] + allDecks[0][i][1] +'</div>');
+            } 
+
+            // const updateCards = () => {
+            //     $( '#myCardsArea' ).empty();
+            //     displayCards();
+            // }
+
+            // Mise à disposition du bouton de validation.
+            const enableButton = () => {
+                if (cardsPlayed.length == 0 
+                    || (firstRound == false && cardsPlayed.length != actualNumCards) 
+                    || sameCards() == 0
+                    || (actualHand.length > 0 && valueCards() == 0))
+                    $( '#play' ).attr('disabled', true);
+                else
+                    $( '#play' ).removeAttr('disabled');
+            }
+
+            // Mise à disposition du bouton pour sauter le tour du joueur.
+            const enableButtonSkip = () => {
+                if (actualPlayer != 1)
+                    $( '#skip' ).attr('disabled', true);
+                else
+                    $( '#skip' ).removeAttr('disabled');
+            }
+
+            // Test si les cartes posées sont de même valeur.
+            const sameCards = () => {
+                let value;
+                let tmp;
+                let i;
+
+                for (i = 0; i < cardsPlayed.length; i++) {
+                    tmp = cardsPlayed[i].split(';')[0];
+
+                    if ((value != undefined && value == tmp) || value == undefined)
+                        value = tmp;
+                    else if (value != undefined && value != tmp)
+                        return (0);
+                }
+                return (1);
+            }
+
+            // Test si la valeur de la carte posée est supérieure ou égale à la dernière jouée.
+            const valueCards = () => {
+                const value = cardsPlayed[0].split(';')[0];
+                const actualValue = actualHand[actualHand.length - 1][0];
+                let i;
+
+                if (value != undefined && actualValue != undefined) {
+                    for (i = defaultDeck.indexOf(actualValue); i < defaultDeck.length; i++) {
+                        if (defaultDeck[i] == value)
+                            return (1);
+                    }
+                }
+                return (0);
+            }
+
+            // Affichage de la (ou des) dernière carte jouée
+            const displayLastCards = () => {
+                let len = actualHand.length;
+
+                $( '#lastCardsPlayed').empty();
+                for (let i = 1; i < actualNumCards + 1; i++) {
+                    $( '#lastCardsPlayed' ).append('<div id="' +  actualHand[len - i][0] + ';' + actualHand[len - i][1] + '" class="cardPlayer">' + actualHand[len - i][0] + actualHand[len - i][1] +'</div>');
+                }
+            }
+
+           
+
+            // Affichage des informations des bots.
+            const displayInfos = () => {
+                for (let i = 2; i <= players; i++)
+                    $( '#infos' ).append(`<div id="player${i}" class="players text-center"></div>`);
+            }
+
+            // Mise a jou des infos (nombre de cartes restantes).
+            const updateInfos = () => {
+                for (let i = 2; i < players + 1; i++) {
+                    $( `#player${i}` ).html(`Joueur ${i}<br />${allDecks[i - 1].length} cartes restantes`);
+                }
+            }
+
+            //*********************************************
+
+            const playersRound = () => {
+                intervalId = setInterval(function() {
+                    if (!isStop)
+                        nextPlayer();
+                    if (endGame == true) {
+                        stopNextPlayer();
+                        console.log('TERMINE');
+                    }
+                }, 1500);
+            }
+
+            const nextPlayer = () => {
+
+                if (playersEndHand.indexOf(actualPlayer) != -1)
+                    actualPlayer++;
+                if (playersEndHand.length == players -1)
+                    endGame = true;
+                
+
+                console.log('------------- joueur ' + actualPlayer + ' ---------');
+
+                console.log('actualValue', actualValue);
+                console.log('actualHand', actualHand);
+
+                if (actualValue == 2) {
+                    // endGame = true;
+                    // stopNextPlayer();
+                    // console.log('TERMINE');
+                    endGame = true;
+                    return (0);
+                }
+
+
+                round();
+                enableButtonSkip();
+
+
+                $( '.players' ).removeClass('actualPlayer');
+                if (actualPlayer == 1)
+                    console.log('A vous de jouer !');
+                if (actualPlayer > 1 && actualPlayer <= players) {
+                    $( `#player${actualPlayer++}` ).addClass('actualPlayer');
+                    displayLastCards();
+                    updateInfos();
+                } else if (playersEndHand.indexOf(1) == -1)
+                    stopNextPlayer();
+
+                // if (actualPlayer > 1 && actualPlayer <= players + 1) {
+                    // displayLastCards();
+                    // updateInfos();
+                // }
+            }
+
+            const stopNextPlayer = () => {
+                clearInterval(intervalId);
+            }
+
+            displayCards();
+            displayInfos();
+
+            
+            if (actualPlayer != 1) {
+                nextPlayer();
+                playersRound();
+            } else {
+                updateInfos();
+                console.log('A vous de jouer !');
+            }
+
+            
+
+            //*******************************************
+
+            // Appuyer sur ESPACE pour mettre en pause le tour des bots.
+            $( 'body' ).keyup(function(e) {
+                if (e.keyCode == 32) { // space bar
+                    isStop = isStop ? false : true;
+                    console.log(isStop)
+                } else if (e.keyCode == 13) { // enter key
+                    console.log('enter key');
+                }
+            });
+
+
+            // ******************************************
+
+            
+
+            // Mise en place du drag and drop et des actions lancées au démarrage.
+            $( function() {
+                $( ".cardPlayer" ).draggable({
+                    scroll: false,
+                    revert : function(event, ui) {
+                        $(this).data("uiDraggable").originalPosition = {
+                            top : 0,
+                            left : 0
+                        };
+                        return (!event);
+                    }
+                });
+                $( "#dropArea" ).droppable({
+                    drop : function(event, ui) {
+                        if (cardsPlayed.indexOf(ui.draggable[0].id) == -1)
+                            cardsPlayed.push(ui.draggable[0].id);
+                        enableButton();
+                    },
+                    out : function (event, ui) {
+                        const index = cardsPlayed.indexOf(ui.draggable[0].id);
+
+                        if (index !== -1) 
+                            cardsPlayed.splice(index, 1);
+                        enableButton();
+                    }
+                });
+
+                enableButton();
+                enableButtonSkip();
+                // displayInfos();
+            });
+
+            // Clique sur le bouton 'Valider'
+
+            $( '#play' ).click(function() {
+  
+                playerRound();
+
+                // displayCards();
+
+                playersRound();
+                
+                // displayLastCards();
+            });
+
+           
+            // Clique sur le bouton 'Sauter le tour'
+            $( '#skip' ).click(function() {
+                console.log(actualPlayer)
+                playersEndHand.push(actualPlayer++);
+                // actualPlayer++;
+                nextPlayer();
+                playersRound();
+            });
+
+
+
+        
+        </script>
+    </body>
+</html>
